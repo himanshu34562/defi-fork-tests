@@ -35,9 +35,9 @@ library Addresses {
     address constant ETH_USD_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address constant BTC_USD_FEED = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
     address constant USDC_USD_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
-    address constant USDT_USD_FEED = 0x3E7d1eAB13ad0104d2750B8863b489D65364e32d;
+    address constant USDT_USD_FEED = 0x3E7d1eAB13ad0104d2750B8863b489D65364e32D;
     address constant DAI_USD_FEED = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
-    address constant LINK_USD_FEED = 0x2c1d072e956AFFC0D435Cb7AC308d97936Ed4f5b;
+    address constant LINK_USD_FEED =  0x2c1d072E956aFFc0D435cb7AC308D97936ED4f5b;
 
     // ─────────────────────────────────────────────────────────────────────
     // Polygon Mainnet — Aave V3
@@ -59,17 +59,17 @@ library Addresses {
     address constant aPOL_USDC = 0x625E7708f30cA75bfd92586e17077590C60eb4cD;
     address constant aPOL_WETH = 0xe50fA9b3c56FfB159cB0FCA61F5c9D750e8128c8;
     address constant aPOL_DAI = 0x82E64f49Ed5EC1bC6e43DAD4FC8Af9bb3A2312EE;
-    address constant aPOL_USDT = 0x6ab707Aca953eDAEfBc4fD23bA73294241490620;
+    address constant aPOL_USDT = 0x6ab707Aca953eDAeFBc4fD23bA73294241490620;
 
     // Variable debt tokens (held after borrow())
     address constant VAR_DEBT_POL_USDC = 0xFCCf3cAbbe80101232d343252614b6A3eE81C989;
     address constant VAR_DEBT_POL_WETH = 0x0c84331e39d6658Cd6e6b9ba04736cC4c4734351;
-    address constant VAR_DEBT_POL_DAI = 0x8619d80FB0141ba7F184CbF22fd724116D9f7fFc;
+    address constant VAR_DEBT_POL_DAI = 0x8619d80FB0141ba7F184CbF22fd724116D9f7ffC;
 
     // ─────────────────────────────────────────────────────────────────────
     // Polygon Mainnet — Chainlink price feeds
     // ─────────────────────────────────────────────────────────────────────
-    address constant ETH_USD_FEED_POLY = 0xF9680D99D6C9589e2a93a78A04a279e509205945;
+    address constant ETH_USD_FEED_POLY = 0xF9680D99D6C9589e2a93a78A04A279e509205945;
     address constant BTC_USD_FEED_POLY = 0xc907E116054Ad103354f2D350FD2514433D57F6f;
     address constant MATIC_USD_FEED_POLY = 0xAB594600376Ec9fD91F8e885dADF0CE036862dE0;
     address constant USDC_USD_FEED_POLY = 0xfE4A8cc5b5B2366C1B58Bea3858e81843581b2F7;
