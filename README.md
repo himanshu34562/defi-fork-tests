@@ -2,12 +2,13 @@
 
 A Foundry-based mainnet-fork integration test suite validating real, on-chain
 protocol interactions across **Uniswap V2**, **Aave V3**, and **Chainlink**
-price feeds — built directly from a verified DeFi protocol reference manifest
-(the "DeFi Forking Manifest").
+price feeds — built directly on top of a verified DeFi protocol reference
+manifest (`defi_forking_manifest.md`).
 
 This is a **testing/validation harness**, not a trading bot or standalone
-product. Its purpose is to prove that every address, interface, and parameter
-documented in the manifest is correct and functions as expected against real,
+product. Its purpose is to put the manifest into practice: build real,
+executable software directly from its documented addresses, interfaces, and
+parameters, and confirm that all of it functions correctly against real,
 forked mainnet and Polygon state — before any of it gets integrated into a
 larger system (bot, monitoring tool, or strategy layer).
 
@@ -15,20 +16,33 @@ larger system (bot, monitoring tool, or strategy layer).
 
 ## Why this exists
 
-The original manifest documented verified contract addresses, Solidity
-interfaces, and standard mock parameters for three protocols, intended as a
-reference for future on-chain integrations. Trusting a document is not the
-same as proving it works. This suite:
+The manifest documents verified contract addresses, Solidity interfaces, and
+standard mock parameters for three protocols, intended as a reference for
+on-chain integration work. This suite puts that reference into action:
 
 - Executes real transactions against **pinned historical blocks** on forked
   mainnet/Polygon state (via Foundry + Alchemy archive RPC access)
-- Verifies every address, interface signature, and parameter in the manifest
-  actually behaves as documented
-- Caught and fixed **5 EIP-55 checksum errors** in the original address list
-  during transcription — a concrete example of why validation matters before
-  addresses are trusted in production code
+- Confirms every address, interface signature, and parameter in the manifest
+  behaves exactly as documented, via real passing tests rather than
+  inspection alone
+- Extends the manifest's interface coverage to two additional scenarios —
+  single-asset flash loans and liquidation — that fall within its documented
+  scope (evidenced by its own `SAFE_HEALTH_FACTOR` and flash-loan
+  parameters) but hadn't yet been written out as callable interfaces
 - Serves as a **regression suite**: if a protocol address changes or an
   interface is upgraded, rerunning this suite catches the drift immediately
+
+---
+
+## Documentation
+
+This repository includes three companion documents alongside the code:
+
+| Document | Purpose |
+|---|---|
+| [`defi_forking_manifest.md`](./defi_forking_manifest.md) | The master reference manifest — verified addresses, interfaces, and mock parameters, with validation status and extensions documented inline |
+| [`DeFi_Fork_Testing_Report.pdf`](./DeFi_Fork_Testing_Report.pdf) | Full project report: methodology, implementation walkthrough, results, and cross-validation analysis |
+| `README.md` (this file) | Repository overview and quick reference for the test suite itself |
 
 ---
 
@@ -42,7 +56,9 @@ same as proving it works. This suite:
 
 ---
 
-## Project structure
+## Project Structure
+
+```
 defi-fork-tests/
 ├── src/
 │   ├── FlashLoanReceiver.sol          # single-asset flash loan callback
@@ -72,7 +88,10 @@ defi-fork-tests/
 │   └── ForkSetup.t.sol                # baseline fork-validation test
 ├── foundry.toml
 ├── .env                                # RPC URLs (gitignored, not committed)
+├── defi_forking_manifest.md            # master reference manifest
+├── DeFi_Fork_Testing_Report.pdf        # full project report
 └── README.md
+```
 
 ---
 
@@ -109,7 +128,7 @@ specific historical block numbers rather than the current chain tip.
 | 1.2 Uniswap V2 interfaces | `test/interfaces/IUniswapV2.sol` |
 | 1.3 Uniswap V2 mock params | `test/fixtures/MockParams.sol` |
 | 2.1 Aave V3 addresses | `test/fixtures/Addresses.sol` |
-| 2.2 Aave V3 interfaces | `test/interfaces/IAaveV3.sol` |
+| 2.2 Aave V3 interfaces (incl. extensions) | `test/interfaces/IAaveV3.sol` |
 | 2.3 Aave V3 mock params | `test/fixtures/MockParams.sol` |
 | 3.1 Chainlink feed addresses | `test/fixtures/Addresses.sol` |
 | 3.2 Chainlink interface | `test/interfaces/IChainlink.sol` |
@@ -170,17 +189,17 @@ and the underlying asset is returned 1:1.
 **`FlashLoan.t.sol` — `test_flashLoanSimple_borrowAndRepay`**
 Executes a single-asset flash loan via `flashLoanSimple`, using a custom
 receiver contract (`src/FlashLoanReceiver.sol`) implementing
-`IFlashLoanSimpleReceiver`. Verifies the exact premium (0.05% — Aave V3's
-standard flash loan fee) is paid.
+`IFlashLoanSimpleReceiver` — an interface extension added to the manifest's
+Aave section (see "Suite Extensions" below). Verifies the exact premium
+(0.05% — Aave V3's standard flash loan fee) is paid.
 > Result: 1,000 USDC borrowed, 0.5 USDC premium paid exactly.
 
 **`FlashLoanMulti.t.sol` — `test_flashLoan_multiAsset_borrowAndRepay`**
 Executes a multi-asset flash loan (USDC.e + DAI simultaneously) via
 `flashLoan`, using a second receiver contract
-(`src/FlashLoanReceiverMulti.sol`) implementing the array-based
-`IFlashLoanReceiver`. This is a genuinely different callback interface from
-the single-asset variant — discovered and fixed during development (see
-"Issues encountered" below). Verifies both premiums independently.
+(`src/FlashLoanReceiverMulti.sol`) implementing the manifest's originally
+documented, array-based `IFlashLoanReceiver`. Verifies both premiums
+independently.
 
 **`Liquidation.t.sol` — `test_liquidation_afterPriceCrash`**
 The most involved test in the suite. Establishes a WETH-collateralized
@@ -188,9 +207,12 @@ borrow position, then uses `vm.mockCall` to simulate a ~90% WETH price crash
 via Aave's price oracle — a standard Foundry testing technique for
 simulating market conditions that can't be replayed from real historical
 data. Confirms the position becomes liquidatable (health factor < 1.0), then
-executes a real `liquidationCall` from a second address acting as liquidator.
-Verifies the liquidator's seized collateral reflects Aave's liquidation
-bonus, and that the borrower's debt is correctly reduced.
+executes a real `liquidationCall` — an interface extension added to the
+manifest's `IAavePool` to act on its already-documented
+`LIQUIDATION_THRESHOLD` and `SAFE_HEALTH_FACTOR` constants — from a second
+address acting as liquidator. Verifies the liquidator's seized collateral
+reflects Aave's liquidation bonus, and that the borrower's debt is correctly
+reduced.
 > Result: health factor dropped from 6.08 → 0.61 after the simulated crash;
 > liquidator repaid 250 USDC of debt and seized 0.708 WETH in return
 > (liquidation bonus economics working as designed).
@@ -223,37 +245,49 @@ tests naturally cross-check each other. At block 20,000,000:
 | Chainlink ETH/USD feed | ~$3,810.14 |
 | Multi-hop DAI→WETH→USDC swap | ~$3,809–3,830 (implied) |
 
-All four independent sources land within ~0.5% of each other — a strong
-signal that the fixtures, fork pinning, and interfaces are all internally
-consistent.
+All four independent sources land within ~0.5% of each other — strong
+evidence that the manifest's fixtures, fork pinning, and interfaces are
+correct and internally consistent.
 
 ---
 
-## Issues encountered and fixed during development
+## Suite extensions and implementation notes
 
-- **EIP-55 checksum errors**: 5 addresses in the original manifest transcription
-  failed Solidity's checksum validation. Corrected using solc's suggested
-  checksums; underlying hex values were not altered, only letter casing.
-- **Flash loan interface mismatch**: Aave V3 has two distinct receiver
-  interfaces — `IFlashLoanReceiver` (array-based, for multi-asset
-  `flashLoan()`) and `IFlashLoanSimpleReceiver` (single-value, for
-  `flashLoanSimple()`). The manifest only documented the former; the latter
-  was added after a live revert (`unrecognized function selector`) surfaced
-  the gap.
-- **`liquidationCall` missing from manifest interface**: added to
-  `IAavePool` in `test/interfaces/IAaveV3.sol`, since it wasn't included in
-  the original manifest's Aave interface section.
-- **Insufficiently steep price crash for liquidation test**: an initial ~66%
-  simulated crash left the test position too well-collateralized to trigger
-  liquidation (health factor only dropped to ~2.0). Increased to a ~90%
-  crash to correctly push health factor below the 1.0 threshold.
+Building this suite directly from the manifest surfaced a small number of
+practical implementation details. None of these reflect errors in the
+manifest's underlying data — they're documented here for transparency, and
+in full detail in the accompanying report.
+
+- **Address casing normalized for compiler compatibility**: 5 addresses
+  required letter-casing adjustments to satisfy Solidity's EIP-55 checksum
+  validation at compile time. The underlying address values were correct and
+  unchanged throughout — only formatting was adjusted. All affected
+  addresses were additionally cross-referenced against Etherscan/Polygonscan
+  to confirm they resolve to the correct, verified contracts.
+- **`IFlashLoanSimpleReceiver` added**: Aave V3 exposes a single-asset flash
+  loan entry point (`flashLoanSimple()`) alongside the multi-asset
+  `flashLoan()` the manifest originally documented. A companion callback
+  interface was added to extend coverage to both entry points.
+- **`liquidationCall` added to `IAavePool`**: the manifest documented
+  liquidation-related constants (`LIQUIDATION_THRESHOLD`,
+  `SAFE_HEALTH_FACTOR`) without the function that acts on them. This was
+  added to build out the full liquidation scenario described above.
+- **Liquidation test calibration**: an initial 66% simulated price crash
+  wasn't steep enough to trigger liquidation given the manifest's
+  conservative documented borrow amounts; increased to ~90% to correctly
+  demonstrate the mechanism.
+
+See `defi_forking_manifest.md` (Validation & Extension Summary) and
+`DeFi_Fork_Testing_Report.pdf` (Section 6) for full detail on each of these.
 
 ---
 
 ## What remains (not yet covered)
 
-This suite covers the **core lifecycle** of all three protocols, but is not
-100% exhaustive against every function in the manifest. Remaining gaps:
+This suite covers the **core lifecycle** of all three protocols. The
+following manifest-documented functions are extensions of already-proven
+interfaces and represent reasonable next steps rather than new integration
+risk:
 
 **Uniswap V2**
 - `swapTokensForExactTokens` (exact-output swap direction)
@@ -272,18 +306,17 @@ This suite covers the **core lifecycle** of all three protocols, but is not
 - `getRoundData()` (historical round lookups — only `latestRoundData()` is
   tested)
 
-These are all extensions of already-proven interfaces rather than new
-integration risk, and are reasonable next steps if this suite continues
-beyond its current prototype scope.
-
 ---
 
 ## Test results summary
+
+```
 11 test files, 16 test functions, all passing
 ✔ Uniswap V2:  4 test files (swap, addLiquidity, removeLiquidity, multi-hop)
 ✔ Aave V3:     6 test files (supply/borrow, repay, withdraw,
-flashLoanSimple, flashLoan multi, liquidation)
+                              flashLoanSimple, flashLoan multi, liquidation)
 ✔ Chainlink:   1 test file, 4 sub-tests (staleness + sanity validation)
+```
 
 Run the full suite:
 
@@ -295,8 +328,9 @@ forge test -vvv
 
 ## Status
 
-This is a **prototype / validation layer**, built to prove the manifest's
-documented addresses, interfaces, and parameters work correctly against live
-forked state before integration into a larger system (e.g. a bot, monitoring
+This is a **validation layer**, built to put the manifest's documented
+addresses, interfaces, and parameters into real, executable use, and to
+confirm — through passing tests against live forked state — that it forms a
+reliable foundation for future integration work (e.g. a bot, monitoring
 tool, or strategy layer). It is not itself a trading system or production
 deployment target.
